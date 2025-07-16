@@ -10,7 +10,7 @@ TELEGRAM_BOT_TOKEN = "8128008808:AAGFbxEBwpv5zc4jtVb9SJ5yF-Np20z8OWc"
 TELEGRAM_CHAT_ID = 953349213
 
 # Keywords, price range — update as you like
-KEYWORDS = "スニーカー,時計,バッグ".split(",")  # comma-separated keywords
+KEYWORDS = "Kapital,Mihara Yasuhiro,Takahiromiyahista,Visvim,Wtaps,Final Home,Maharishi,Issey Miyake,PPFM,Mercibeaucoup,Tete Homme,Vivienne Westwood,Hysteric Glamour,Number Nine,Yohji Yamamoto,Jean Paul Gaultier,Dolce & Gabbana,Bottega Veneta,Maison Margiela,Comme Des Garçons,Comme Des Garcons,Junya Watanabe,Undercover,Sacai,GOA,ifsixwasnine,L.G.B,Semantic Design,In The Attic,beauty:beast,14th Addiction,Y Project,Martine Rose,Yasuyuki Ishii,Hyoma,20471120,Doublet,291295=homme,Wacko Maria,Courreges,Avirex,Evisu,Balenciaga,Suicoke,Supreme,Marithe Francois Girbaud,Facetasm,Yellow Corn,Kadoya,Fucking Awesome,Morgan Homme".split(",")
 MIN_PRICE = 1000
 MAX_PRICE = 5000
 
