@@ -1,0 +1,9 @@
+{
+    "build": {
+      "buildCommand": "pip install -r requirements.txt"
+    },
+    "start": {
+      "startCommand": "python3 mercari_bot1.py"
+    }
+  }
+  
