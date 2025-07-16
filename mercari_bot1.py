@@ -16,11 +16,14 @@ MIN_PRICE = 1000
 MAX_PRICE = 5000
 
 HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/114.0.0.0 Safari/537.36"
-    )
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                  "AppleWebKit/537.36 (KHTML, like Gecko) "
+                  "Chrome/114.0.0.0 Safari/537.36",
+    "Accept-Language": "ja,en-US;q=0.9,en;q=0.8",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+    "Referer": "https://www.mercari.com/jp/",
+    "Connection": "keep-alive",
+    "Upgrade-Insecure-Requests": "1",
 }
 
 bot = Bot(token=TELEGRAM_BOT_TOKEN)
@@ -65,13 +68,16 @@ def parse_items_from_html(html):
 
 async def main():
     print("🔍 Mercari scraping bot started...")
+    session = requests.Session()
+    session.headers.update(HEADERS)
+
     while True:
         for keyword in KEYWORDS:
             keyword = keyword.strip()
             print(f"Searching for '{keyword}'...")
             url = build_search_url(keyword, MIN_PRICE, MAX_PRICE)
             try:
-                response = requests.get(url, headers=HEADERS)
+                response = session.get(url)
                 if response.status_code != 200:
                     print(f"Failed to retrieve {url}, status code: {response.status_code}")
                     continue
