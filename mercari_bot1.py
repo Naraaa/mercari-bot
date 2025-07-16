@@ -2,80 +2,95 @@ import os
 import time
 import requests
 from bs4 import BeautifulSoup
+import asyncio
 from telegram import Bot
 
-# === Configuration ===
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8128008808:AAGFbxEBwpv5zc4jtVb9SJ5yF-Np20z8OWc")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "953349213")
-KEYWORDS = os.getenv("KEYWORDS", "スニーカー,時計,バッグ").split(",")
-MIN_PRICE = int(os.getenv("MIN_PRICE", "1000"))
-MAX_PRICE = int(os.getenv("MAX_PRICE", "5000"))
+# Your Telegram bot token and chat ID (hardcoded)
+TELEGRAM_BOT_TOKEN = "8128008808:AAGFbxEBwpv5zc4jtVb9SJ5yF-Np20z8OWc"
+TELEGRAM_CHAT_ID = 953349213
+
+# Keywords, price range — update as you like
+KEYWORDS = "スニーカー,時計,バッグ".split(",")  # comma-separated keywords
+MIN_PRICE = 1000
+MAX_PRICE = 5000
+
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/114.0.0.0 Safari/537.36"
+    )
+}
 
 bot = Bot(token=TELEGRAM_BOT_TOKEN)
 
-def send_to_telegram(item):
-    message = (
-        f"🛍 {item['title']}\n"
-        f"💴 {item['price']}\n"
-        f"🔗 {item['link']}"
+async def send_telegram_message(text):
+    try:
+        await bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=text)
+    except Exception as e:
+        print(f"Telegram send_message error: {e}")
+
+def build_search_url(keyword, min_price, max_price):
+    base_url = "https://www.mercari.com/jp/search/"
+    params = (
+        f"?keyword={keyword}"
+        f"&price_min={min_price}"
+        f"&price_max={max_price}"
+        "&status=on_sale"
+        "&sort=created_time"
+        "&order=desc"
     )
-    bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message)
+    return base_url + params
 
-def parse_price(price_str):
-    digits = ''.join(filter(str.isdigit, price_str))
-    return int(digits) if digits else 0
-
-def search_mercari_html(keyword):
-    url = f"https://www.mercari.jp/search/?keyword={keyword}"
-    headers = {
-        "User-Agent": "Mozilla/5.0"
-    }
-    response = requests.get(url, headers=headers)
-    response.raise_for_status()
-    
-    soup = BeautifulSoup(response.text, "html.parser")
+def parse_items_from_html(html):
+    soup = BeautifulSoup(html, "html.parser")
     items = []
-    
-    for item_tag in soup.select("section.items-box"):
-        title_tag = item_tag.select_one(".items-box-name")
-        price_tag = item_tag.select_one(".items-box-price")
-        link_tag = item_tag.select_one("a")
+    for item_section in soup.select('section[data-testid="item-cell"]'):
+        title_tag = item_section.select_one('h3[data-testid="item-title"]')
+        price_tag = item_section.select_one('div[data-testid="item-price"]')
+        link_tag = item_section.find('a', href=True)
 
-        if not (title_tag and price_tag and link_tag):
+        if not title_tag or not price_tag or not link_tag:
             continue
 
-        title = title_tag.text.strip()
-        price_str = price_tag.text.strip()
-        price = parse_price(price_str)
-        link = "https://www.mercari.jp" + link_tag["href"]
+        title = title_tag.get_text(strip=True)
+        price = price_tag.get_text(strip=True)
+        url = "https://www.mercari.com" + link_tag['href']
 
-        if price < MIN_PRICE or price > MAX_PRICE:
-            continue
+        items.append({"title": title, "price": price, "url": url})
 
-        items.append({
-            "title": title,
-            "price": price_str,
-            "link": link
-        })
     return items
 
-def run_bot():
-    seen_links = set()
+async def main():
     print("🔍 Mercari scraping bot started...")
     while True:
-        try:
-            for keyword in KEYWORDS:
-                print(f"Searching for '{keyword}'...")
-                results = search_mercari_html(keyword)
-                for item in results:
-                    if item["link"] not in seen_links:
-                        send_to_telegram(item)
-                        seen_links.add(item["link"])
-            time.sleep(60)  # 1 minute delay between searches
-        except Exception as e:
-            print(f"⚠️ Error: {e}")
-            time.sleep(30)
+        for keyword in KEYWORDS:
+            keyword = keyword.strip()
+            print(f"Searching for '{keyword}'...")
+            url = build_search_url(keyword, MIN_PRICE, MAX_PRICE)
+            try:
+                response = requests.get(url, headers=HEADERS)
+                if response.status_code != 200:
+                    print(f"Failed to retrieve {url}, status code: {response.status_code}")
+                    continue
+
+                items = parse_items_from_html(response.text)
+                if not items:
+                    print(f"No items found for '{keyword}'.")
+                    continue
+
+                for item in items:
+                    message = f"{item['title']}\nPrice: {item['price']}\n{item['url']}"
+                    print(f"Sending to Telegram:\n{message}\n")
+                    await send_telegram_message(message)
+
+            except Exception as e:
+                print(f"Error during search for '{keyword}': {e}")
+
+            await asyncio.sleep(3)  # delay between keyword searches
+
+        print("Waiting 60 seconds before next cycle...\n")
+        await asyncio.sleep(60)
 
 if __name__ == "__main__":
-    run_bot()
-
+    asyncio.run(main())
